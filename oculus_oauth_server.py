@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 CLIENT_ID = "2232352533827318"
 CLIENT_SECRET = "7d702793a8f61436222ca0e7aec437e5"
-REDIRECT_URI = "https://fuv-d5cj.vercel.app/oauth/callback"  # Replace with your Vercel URL
+REDIRECT_URI = "https://fuv-d5cjj.vercel.app/oauth/callback"  # Replace with your Vercel URL
 
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1361027372119228506/33nbHfh6SFxGKEEt2UKKP5jg5xlHrClqsk6TVFTeNgPd1t1PO_R_KgMP09CHcE2nCj6O"
 
