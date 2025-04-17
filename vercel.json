@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "oculus_oauth_server.py",  // Replace with your app's filename if different
+      "src": "oculus_oauth_server.py",  
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "oculus_oauth_server.py"  // Replace with your app's filename if different
+      "dest": "oculus_oauth_server.py" 
     }
   ]
 }
