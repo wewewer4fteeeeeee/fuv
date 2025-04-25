@@ -2,14 +2,19 @@
   "version": 2,
   "builds": [
     {
-      "src": "oculus_oauth_server.py",  
+      "src": "main.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "oculus_oauth_server.py" 
+      "dest": "/main.py"
     }
-  ]
+  ],
+  "env": {
+    "DISCORD_TOKEN": "@discord_token",
+    "WEBHOOK_URL": "@webhook_url",
+    "TARGET_BASE": "@target_base"
+  }
 }
