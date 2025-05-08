@@ -1,70 +1,112 @@
 import os
-import discord
-from discord.ext import commands
-from flask import Flask, request
+import subprocess
+import sys
+import random
+import time
+from flask import Flask, render_template_string, request, jsonify
 import requests
+from fake_useragent import UserAgent
 
-# Initialize Flask app
+# Install missing packages if not already installed
+required_packages = ["flask", "requests", "fake_useragent"]
+for package in required_packages:
+    try:
+        __import__(package)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
 app = Flask(__name__)
 
-# Environment Variables (make sure you set them on Vercel)
-DISCORD_TOKEN = os.getenv("MTM2MTAzMzIxNTk2MzMwMzk5Ng.GrXy6B.n9ID_tOjlq6Qoa6TeHpFyaBdLwvFXuBgYWHYN0")
-WEBHOOK_URL = os.getenv("https://discord.com/api/webhooks/1361027372119228506/33nbHfh6SFxGKEEt2UKKP5jg5xlHrClqsk6TVFTeNgPd1t1PO_R_KgMP09CHcE2nCj6O")
-TARGET_BASE = os.getenv("https://bigscaryapi.azurewebsites.net/api/BigScaryAPI?code=YH0YeQFzdUmr8ErexjqWTIiYk6_J_wb3fAv8s15BtV2VAzFuglPGJQ==")
+# Function to spoof browser and IP
+class SecurlySpoofer:
+    def __init__(self):
+        self.ua = UserAgent()
+        self.session = requests.Session()
 
-# Initialize Discord bot
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+    def rotate_fingerprint(self):
+        """Generate new browser fingerprint"""
+        headers = {
+            'User-Agent': self.ua.random,
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Sec-Ch-Ua': f'"Not.A/Brand";v="8", "Chromium";v="{random.randint(100, 124)}"',
+            'X-Forwarded-For': f'{random.randint(100, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}'
+        }
+        self.session.headers.update(headers)
 
-# Define Flask route for home
+    def make_request(self, url):
+        """Make spoofed request to the URL"""
+        self.rotate_fingerprint()
+        try:
+            response = self.session.get(url)
+            return response.text
+        except Exception as e:
+            print(f"Request failed: {e}")
+            return None
+
+# Home route (UI page with HTML inside)
 @app.route('/')
 def home():
-    return "Flask is running on Vercel!"
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Securly Spoofer</title>
+    </head>
+    <body>
+        <h1>Securly Spoofer</h1>
 
-# Define Flask route for linking accounts
-@app.route('/link', methods=['POST'])
-def link_account():
-    discord_user_id = request.form.get('discord_user_id')
-    username = request.form.get('username')
+        <form id="spooferForm">
+            <label for="url">Enter the URL to spoof:</label>
+            <input type="text" id="url" name="url" placeholder="https://pass.securly.com/login" required><br><br>
+
+            <button type="submit">Send Request</button>
+        </form>
+
+        <div id="response" style="margin-top: 20px;">
+            <h3>Response:</h3>
+            <p id="responseMessage"></p>
+        </div>
+
+        <script>
+            document.getElementById("spooferForm").addEventListener("submit", function(event) {
+                event.preventDefault();
+                const url = document.getElementById("url").value;
+                
+                fetch("/make_request", {
+                    method: "POST",
+                    body: new FormData(document.getElementById("spooferForm")),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        document.getElementById("responseMessage").textContent = "Request successful!";
+                    } else {
+                        document.getElementById("responseMessage").textContent = "Request failed!";
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("responseMessage").textContent = "Error: " + error;
+                });
+            });
+        </script>
+    </body>
+    </html>
+    """
+    return render_template_string(html_content)
+
+# API route to perform spoofed request
+@app.route('/make_request', methods=['POST'])
+def make_request():
+    url = request.form['url']
+    spoofer = SecurlySpoofer()
+    result = spoofer.make_request(url)
     
-    if discord_user_id and username:
-        # Send confirmation to webhook
-        data = {
-            "content": f"Account linked: {username}, Discord ID: {discord_user_id}"
-        }
-        response = requests.post(WEBHOOK_URL, json=data)
-        if response.status_code == 200:
-            return "Account linked successfully!"
-        else:
-            return "Failed to link account!", 500
-    return "Missing parameters!", 400
+    if result:
+        return jsonify({"status": "success", "message": "Request successful!", "data": result})
+    else:
+        return jsonify({"status": "error", "message": "Request failed!"})
 
-# Define Flask route for granting items
-@app.route('/give', methods=['POST'])
-def give_item():
-    discord_user_id = request.form.get('discord_user_id')
-    currency = request.form.get('currency')
-
-    if discord_user_id and currency:
-        # Send request to backend API to process the item grant
-        backend_url = f"{TARGET_BASE}/api/grant_item"
-        payload = {
-            "discord_user_id": discord_user_id,
-            "currency": currency
-        }
-        response = requests.post(backend_url, json=payload)
-        
-        if response.status_code == 200:
-            data = {
-                "content": f"User with ID {discord_user_id} received {currency}!"
-            }
-            requests.post(WEBHOOK_URL, json=data)
-            return "Item granted successfully!"
-        else:
-            return "Failed to grant item!", 500
-    return "Missing parameters!", 400
-
-# Start Flask app for local development (not needed on Vercel)
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
